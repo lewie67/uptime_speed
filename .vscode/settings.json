@@ -1,0 +1,11 @@
+{
+  "sqltools.connections": [
+    {
+      "database": "${workspaceFolder:uptime_speed}/uptime_speed.db",
+      "driver": "SQLite",
+      "name": "uptime_speed",
+      "previewLimit": 50
+    }
+  ],
+  "sqltools.useNodeRuntime": true
+}
