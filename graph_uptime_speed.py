@@ -6,6 +6,13 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from dateutil import parser
 from matplotlib import style
+
+import numpy as np
+from bokeh.io import curdoc
+from bokeh.layouts import column, row
+from bokeh.models import ColumnDataSource, Slider, TextInput
+from bokeh.plotting import figure
+
 style.use('fivethirtyeight')
 
 conn = sqlite3.connect('uptime_speed.db')
@@ -21,18 +28,20 @@ def graph_data(y_axis_column):
   values = []
 
   for row in data:
-    #AML#epoch_date = parser.parse(str(row[0]))
-    epoch_date= row[0]
-    date_string = str(datetime.datetime.fromtimestamp(epoch_date).strftime('%Y-%m-%d %H:%M:%S'))
-    dates.append(date_string)
+    dates.append(datetime.datetime.fromtimestamp(row[0]))
     values.append(row[1])
-  
-  plt.plot_date(dates, values, '-')
-  plt.ion()
-  plt.draw()
-  plt.pause(0.001)
 
-columns = ['ping_ms', 'down_speed', 'up_speed']
-for column in columns:
-  graph_data(column)
-input("Press [enter] to continue.")
+  source = ColumnDataSource(data=dict(x=dates, y=values))
+
+  plot = figure(plot_height=400, plot_width=900, title="Speed Graph",
+                tools="crosshair,pan,reset,save,wheel_zoom",
+                x_axis_type='datetime')
+
+  plot.line('x', 'y', source=source)
+  return plot
+
+down_speed = graph_data('down_speed')
+up_speed = graph_data('up_speed')
+ping_ms = graph_data('ping_ms')
+curdoc().add_root(column(down_speed, up_speed, ping_ms))
+curdoc().title = "Plot"
