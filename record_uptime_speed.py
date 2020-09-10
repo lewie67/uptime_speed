@@ -1,10 +1,9 @@
 
 # https://github.com/sivel/speedtest-cli
 import speedtest as st
-import pandas as pd
-from datetime import datetime
 import sqlite3
 import time
+import syslog
 
 
 def get_new_speeds():
@@ -17,7 +16,7 @@ def get_new_speeds():
     speed_test = st.Speedtest()
     speed_test.get_best_server()
 
-   # Get ping (miliseconds)
+    # Get ping (miliseconds)
     ping = speed_test.results.ping
     # Perform download and upload speed tests (bits per second)
     download = speed_test.download()
@@ -30,18 +29,16 @@ def get_new_speeds():
     up = 0
     download_mbs = 0
     upload_mbs = 0
-    ping = 1800000
+    ping = 0
 
   return (up, ping, download_mbs, upload_mbs)
 
 
 def update_db(internet_speeds):
   # Get today's date in the form Month/Day/Year
-  #AML#date_today = datetime.today().strftime("%m/%d/%Y")
   curr_time = time.time()
-  # File with the dataset
-  #AML#csv_file_name = "internet_speeds_dataset.csv"
-  conn = sqlite3.connect('uptime_speed.db')
+  # Connect to sqlite3 db
+  conn = sqlite3.connect('/home/alewis/projects/uptime_speed/uptime_speed.db')
   c = conn.cursor()
 
   insert_statement =  'INSERT INTO uptime_speed VALUES(' + \
@@ -65,6 +62,8 @@ def update_db(internet_speeds):
     conn.commit()
 
 
+syslog.syslog("Running uptime_speed")
 new_speeds = get_new_speeds()
+syslog.syslog("Updating Database from uptime_speed")
 update_db(new_speeds)
-#AML#collect_internet_speeds.py hosted with ❤ by GitHub
+syslog.syslog("Finished running uptime_speed")
