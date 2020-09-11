@@ -76,18 +76,21 @@ update_speed_data()
 TOOLS = "crosshair,pan,reset,save,wheel_zoom,xbox_select"
 down_speed_plot = figure( tools=TOOLS, height=250, width=800, 
                           x_axis_type='datetime', 
+                          tooltips=[("Download (Mbps)", "@y0")],
                           title="Download Speed")
 down_speed_plot.xaxis.axis_label = 'Date/Time'
 down_speed_plot.yaxis.axis_label = 'Mbps'
 up_speed_plot = figure(   tools=TOOLS, height=250, width=800, 
                           x_axis_type='datetime', 
                           x_range=down_speed_plot.x_range,
+                          tooltips=[("Upload (Mbps)", "@y2")],
                           title="Upload Speed")
 up_speed_plot.xaxis.axis_label = 'Date/Time'
 up_speed_plot.yaxis.axis_label = 'Mbps'
 ping_speed_plot = figure( tools=TOOLS, height=250, width=800, 
                           x_axis_type='datetime', 
                           x_range=down_speed_plot.x_range,
+                          tooltips=[("Ping (ms)", "@y4")],
                           title="Ping Speed")
 ping_speed_plot.xaxis.axis_label = 'Date/Time'
 ping_speed_plot.yaxis.axis_label = 'ms'
