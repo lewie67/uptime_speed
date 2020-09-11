@@ -22,37 +22,53 @@ source = ColumnDataSource(data=dict(  x = np.empty(2),
                                       y4 = np.empty(2),
                                       y5 = np.empty(2)))
 
+today = datetime.datetime.now()
+yesterday = today - timedelta(days=1)
+date_range_slider = DateRangeSlider(  value = (yesterday, today),
+                                      start = yesterday,
+                                      end = today,
+                                      step = 1000*60*60
+)
+
+
 # Generate current date for display
 now = datetime.datetime.now()
 curr_time = now.strftime("%H:%M:%S")
-stats = PreText(text=f"Updated: {curr_time}", width=500)
+status = PreText(text=f"Updated: {curr_time}", width=500)
+selected_data = PreText(text=f"Selected Graph Data")
 
 # Query database for date boundries for slider
-def get_date_boundaries():
+def update_date_boundaries():
+  """Update the start and end datetimes for the date slider
 
+  Queries the database and returns min and max datestamps available
+  """
   # Pull last 24 hours worth
   query = "select min(epoch_time), max(epoch_time) from uptime_speed"
   c.execute(query)
   data = c.fetchall()
-  return data[0][0], data[0][1]
+  date_range_slider.start = datetime.datetime.fromtimestamp(data[0][0])
+  date_range_slider.end = datetime.datetime.fromtimestamp(data[0][1])
+  
     
 # Query database and load source with latest data
 def update_speed_data():
+  """Update the source data from the database for the graphs
 
-  # Pull last 24 hours worth
-  today = datetime.datetime.now()
-  yesterday = today - timedelta(days=1)
-  query = f"select epoch_time, ping_ms, up_speed, down_speed from uptime_speed where epoch_time between {yesterday.timestamp()} and {today.timestamp()} order by epoch_time asc"
+  """
+
+  start = date_range_slider.value_as_datetime[0]
+  end = date_range_slider.value_as_datetime[1]
+  #AML#print(f"start: {start}\nend: {end}")
+  query = f"select epoch_time, ping_ms, up_speed, down_speed from uptime_speed where epoch_time between {start.timestamp()} and {end.timestamp()} order by epoch_time asc"
   c.execute(query)
   data = c.fetchall()
 
-  dates = []
-  ping_speed = []
-  up_speed = []
-  down_speed = []
+  dates       = []
+  ping_speed  = []
+  up_speed    = []
+  down_speed  = []
 
-
-  # Put each series into an array 
   for row in data:
     dates.append(datetime.datetime.fromtimestamp(row[0]))
     ping_speed.append(row[1])
@@ -79,16 +95,42 @@ def update_speed_data():
   source.data['y4'] = np_ping_speed
   source.data['y5'] = np_ping_speed_avg
 
+  query = f"select count(*) from uptime_speed where epoch_time between {start.timestamp()} and {end.timestamp()}"
+  c.execute(query)
+  data = c.fetchall()
+  selected_samples = data[0][0]
+
+  query = f"select count(*) from uptime_speed"
+  c.execute(query)
+  data = c.fetchall()
+  total_samples = data[0][0]
   # Update current time
   now = datetime.datetime.now()
   curr_time = now.strftime("%H:%M:%S")
-  stats.text = f"Updated: {curr_time}"
+  status.text = f"Updated: {curr_time}\nTotal Samples: {total_samples}\nSamples in Date Range: {selected_samples}"
   
   # End function
 
+def selection_change(attrname, old, new):
+  """Update text area with selected data from graphs
+
+  """
+  selected = source.selected.indices
+  print(selected)
+  text_output = u"Time Stamp\t\t\t\u2193 Mbps\t\u2191 Mbps\tRTT (ms)\n"
+  for index in selected:
+    text_output = text_output + f"{source.data['x'][index]}\t"
+    text_output = text_output + f"{source.data['y0'][index]}\t"
+    text_output = text_output + f"{source.data['y2'][index]}\t"
+    text_output = text_output + f"{source.data['y4'][index]}\t\n"
+
+  selected_data.text = text_output
+
+
+update_date_boundaries()
 # Generate first dataset
 update_speed_data()
-# Tools for each graph
+
 TOOLS = "crosshair,pan,reset,save,wheel_zoom,xbox_select"
 
 # Generate download speed graph figure
@@ -118,36 +160,23 @@ ping_speed_plot.xaxis.axis_label = 'Date/Time'
 ping_speed_plot.yaxis.axis_label = 'ms'
 #pylint: disable=E1121
 
-# Plot download datapoints
+
+# Plot datapoints and trendlines
 down_speed_plot.circle('x', 'y0', source=source, selection_color="orange", alpha=0.2)
-# Plot download trendline
 down_speed_plot.line('x', 'y1', source=source, selection_color="orange")
-# Plot upload datapoints
 up_speed_plot.circle('x', 'y2', source=source, selection_color="orange", alpha=0.2)
-# Plot upload trendline
 up_speed_plot.line('x', 'y3', source=source, selection_color="orange")
-# Plot ping datapoints
 ping_speed_plot.circle('x', 'y4', source=source, selection_color="orange", alpha=0.2)
-# Plot ping trendline
 ping_speed_plot.line('x', 'y5', source=source, selection_color="orange")
 
 # Callback to update every 10 seconds
 curdoc().add_periodic_callback(update_speed_data, 10000)
 
-earliest, latest = get_date_boundaries()
-today = datetime.datetime.now()
-yesterday = today - timedelta(days=1)
-
-date_range_slider = DateRangeSlider(  value = (yesterday, today),
-                                      start = datetime.datetime.fromtimestamp(earliest),
-                                      end = datetime.datetime.fromtimestamp(latest))
-
-date_range_slider.js_on_change("value", CustomJS( code = """
-  console.log('date_range_slider: value=' + this.value, this.toString())
-"""))
+date_range_slider.on_change("value", lambda attr, old, new: update_speed_data)
+source.selected.on_change("indices", selection_change)
 
 # Generate layout
-stats_controls = column(stats, date_range_slider)
+stats_controls = column(status, date_range_slider, selected_data)
 plots = column(down_speed_plot, up_speed_plot, ping_speed_plot)
 pl_layout = layout([
           [plots, stats_controls],
