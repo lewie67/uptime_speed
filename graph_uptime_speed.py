@@ -1,6 +1,7 @@
 import sqlite3
 import time
 import datetime
+from datetime import timedelta
 #AML#import random
 #AML#import matplotlib.pyplot as plt 
 #AML#import matplotlib.dates as mdates
@@ -31,7 +32,10 @@ stats = PreText(text=f"Updated: {curr_time}", width=500)
 
 def update_speed_data():
 
-  query = 'select epoch_time, ping_ms, up_speed, down_speed from uptime_speed'
+  #AML#query = 'select epoch_time, ping_ms, up_speed, down_speed from uptime_speed'
+  today = datetime.datetime.now()
+  yesterday = today - timedelta(days=1)
+  query = f"select epoch_time, ping_ms, up_speed, down_speed from uptime_speed where epoch_time between {yesterday.timestamp()} and {today.timestamp()} order by epoch_time asc"
   c.execute(query)
   data = c.fetchall()
 
@@ -47,14 +51,14 @@ def update_speed_data():
     up_speed.append(row[2])
     down_speed.append(row[3])
 
-  window_size = 30
+  window_size = 5
   window = np.ones(window_size)/float(window_size)
   np_down_speed = np.array(down_speed)
-  np_down_speed_avg = np.convolve(np_down_speed, window, 'same')
+  np_down_speed_avg = np.convolve(np_down_speed, window, 'valid')
   np_up_speed = np.array(up_speed)
-  np_up_speed_avg = np.convolve(np_up_speed, window, 'same')
+  np_up_speed_avg = np.convolve(np_up_speed, window, 'valid')
   np_ping_speed = np.array(ping_speed)
-  np_ping_speed_avg = np.convolve(np_down_speed, window, 'same')
+  np_ping_speed_avg = np.convolve(np_ping_speed, window, 'valid')
 
 
   source.data['x'] = np.array(dates)
@@ -70,18 +74,18 @@ def update_speed_data():
 
 update_speed_data()
 TOOLS = "crosshair,pan,reset,save,wheel_zoom,xbox_select"
-down_speed_plot = figure( tools=TOOLS, height=200, width=800, 
+down_speed_plot = figure( tools=TOOLS, height=250, width=800, 
                           x_axis_type='datetime', 
                           title="Download Speed")
 down_speed_plot.xaxis.axis_label = 'Date/Time'
 down_speed_plot.yaxis.axis_label = 'Mbps'
-up_speed_plot = figure(   tools=TOOLS, height=200, width=800, 
+up_speed_plot = figure(   tools=TOOLS, height=250, width=800, 
                           x_axis_type='datetime', 
                           x_range=down_speed_plot.x_range,
                           title="Upload Speed")
 up_speed_plot.xaxis.axis_label = 'Date/Time'
 up_speed_plot.yaxis.axis_label = 'Mbps'
-ping_speed_plot = figure( tools=TOOLS, height=200, width=800, 
+ping_speed_plot = figure( tools=TOOLS, height=250, width=800, 
                           x_axis_type='datetime', 
                           x_range=down_speed_plot.x_range,
                           title="Ping Speed")
