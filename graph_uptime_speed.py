@@ -27,7 +27,15 @@ now = datetime.datetime.now()
 curr_time = now.strftime("%H:%M:%S")
 stats = PreText(text=f"Updated: {curr_time}", width=500)
 
+# Query database for date boundries for slider
+def get_date_boundaries():
 
+  # Pull last 24 hours worth
+  query = "select min(epoch_time), max(epoch_time) from uptime_speed"
+  c.execute(query)
+  data = c.fetchall()
+  return data[0][0], data[0][1]
+    
 # Query database and load source with latest data
 def update_speed_data():
 
@@ -126,10 +134,23 @@ ping_speed_plot.line('x', 'y5', source=source, selection_color="orange")
 # Callback to update every 10 seconds
 curdoc().add_periodic_callback(update_speed_data, 10000)
 
+earliest, latest = get_date_boundaries()
+today = datetime.datetime.now()
+yesterday = today - timedelta(days=1)
+
+date_range_slider = DateRangeSlider(  value = (yesterday, today),
+                                      start = datetime.datetime.fromtimestamp(earliest),
+                                      end = datetime.datetime.fromtimestamp(latest))
+
+date_range_slider.js_on_change("value", CustomJS( code = """
+  console.log('date_range_slider: value=' + this.value, this.toString())
+"""))
+
 # Generate layout
+stats_controls = column(stats, date_range_slider)
 plots = column(down_speed_plot, up_speed_plot, ping_speed_plot)
 pl_layout = layout([
-          [plots, stats],
+          [plots, stats_controls],
          ])
 curdoc().add_root(pl_layout)
 curdoc().title = "Download, Upload, and Ping Speeds"
