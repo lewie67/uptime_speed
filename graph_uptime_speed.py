@@ -4,6 +4,7 @@ import time
 import datetime
 from datetime import timedelta, date
 import numpy as np
+import pandas as pd
 import array
 from bokeh.io import curdoc
 from bokeh.layouts import column, row, layout
@@ -57,46 +58,30 @@ def update_speed_data():
 
   """
 
+  ts = time.time()
   print("Running update_speed_data")
   ts = time.time()
   start = date_range_slider.value_as_datetime[0]
   end = date_range_slider.value_as_datetime[1]
   query = f"select epoch_time, ping_ms, up_speed, down_speed from uptime_speed where epoch_time between {start.timestamp()} and {end.timestamp()} order by epoch_time asc"
   c.execute(query)
-  data = c.fetchall()
-
-  dates       = []
-  ping_speed  = []
-  up_speed    = []
-  down_speed  = []
-
-  for row in data:
-    dates.append(datetime.datetime.fromtimestamp(row[0]))
-    ping_speed.append(row[1])
-    up_speed.append(row[2])
-    down_speed.append(row[3])
+  data = pd.read_sql(query, con=conn, parse_dates=['epoch_time'])
 
   # Generate numpy arrays for series and averages for trend line
   window_size = 5
   window = np.ones(window_size)/float(window_size)
-  np_down_speed = np.array(down_speed)
-  np_down_speed_avg = np.convolve(np_down_speed, window, 'valid')
-  np_up_speed = np.array(up_speed)
-  np_up_speed_avg = np.convolve(np_up_speed, window, 'valid')
-  np_ping_speed = np.array(ping_speed)
-  np_ping_speed_avg = np.convolve(np_ping_speed, window, 'valid')
 
 
   # Set source data
-  source.data['x'] = np.array(dates)
-  source.data['y0'] = np_down_speed
-  source.data['y1'] = np_down_speed_avg
-  source.data['y2'] = np_up_speed
-  source.data['y3'] = np_up_speed_avg
-  source.data['y4'] = np_ping_speed
-  source.data['y5'] = np_ping_speed_avg
+  source.data['x'] = data['epoch_time']
+  source.data['y0'] = data['down_speed']
+  source.data['y1'] = np.convolve(data['down_speed'], window, 'valid')
+  source.data['y2'] = data['up_speed']
+  source.data['y3'] = np.convolve(data['up_speed'], window, 'valid')
+  source.data['y4'] = data['ping_ms']
+  source.data['y5'] = np.convolve(data['ping_ms'], window, 'valid')
   ts2 = time.time()
-  print(f"Took {ts2-ts} seconds")
+  print(f"Took {ts2-ts}")
 
   query = f"select count(*) from uptime_speed where epoch_time between {start.timestamp()} and {end.timestamp()}"
   c.execute(query)
