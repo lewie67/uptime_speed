@@ -57,9 +57,9 @@ def update_speed_data():
 
   """
 
+  print("Running update_speed_data")
   start = date_range_slider.value_as_datetime[0]
   end = date_range_slider.value_as_datetime[1]
-  #AML#print(f"start: {start}\nend: {end}")
   query = f"select epoch_time, ping_ms, up_speed, down_speed from uptime_speed where epoch_time between {start.timestamp()} and {end.timestamp()} order by epoch_time asc"
   c.execute(query)
   data = c.fetchall()
@@ -116,7 +116,7 @@ def selection_change(attrname, old, new):
 
   """
   selected = source.selected.indices
-  print(selected)
+  #AML#print(selected)
   text_output = u"Time Stamp\t\t\t\u2193 Mbps\t\u2191 Mbps\tRTT (ms)\n"
   for index in selected:
     text_output = text_output + f"{source.data['x'][index]}\t"
