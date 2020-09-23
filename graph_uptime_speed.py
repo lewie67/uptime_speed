@@ -58,6 +58,7 @@ def update_speed_data():
   """
 
   print("Running update_speed_data")
+  ts = time.time()
   start = date_range_slider.value_as_datetime[0]
   end = date_range_slider.value_as_datetime[1]
   query = f"select epoch_time, ping_ms, up_speed, down_speed from uptime_speed where epoch_time between {start.timestamp()} and {end.timestamp()} order by epoch_time asc"
@@ -94,6 +95,8 @@ def update_speed_data():
   source.data['y3'] = np_up_speed_avg
   source.data['y4'] = np_ping_speed
   source.data['y5'] = np_ping_speed_avg
+  ts2 = time.time()
+  print(f"Took {ts2-ts} seconds")
 
   query = f"select count(*) from uptime_speed where epoch_time between {start.timestamp()} and {end.timestamp()}"
   c.execute(query)
